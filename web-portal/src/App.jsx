@@ -9,16 +9,16 @@ function App() {
       <Tabs
         tabs={[
           {
-            label: "Home",
+            label: "Temperature",
             content: <TemperaturePage/>,
           },
           {
-            label: "Profile",
-            content: "profile",
+            label: "Tab2",
+            content: "Tab2",
           },
           {
-            label: "Settings",
-            content: "settings",
+            label: "Tab3",
+            content: "Tab3",
           },
         ]}
       />

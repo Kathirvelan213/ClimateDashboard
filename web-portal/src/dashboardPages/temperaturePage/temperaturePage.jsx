@@ -312,13 +312,13 @@ export default function TemperaturePage() {
 		}
 
 		return (
-			<div style={{ marginBottom: 24 }}>
+			<div>
 				<h3>Map: Temperature Points (heat-like)</h3>
 				<div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
 					<label>Year: <select value={selectedYear || ''} onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : null)} style={{ marginLeft: 8 }}><option value=''>All</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
 					<label>Month: <select value={selectedMonth || ''} onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : null)} style={{ marginLeft: 8 }}><option value=''>All</option>{Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
 				</div>
-				<div id='temp-map' style={{ height: 400, width: '100%', border: '1px solid #ddd' }} />
+				<div id='temp-map' style={{ height: 300, width: '100%', border: '1px solid #ddd' }} />
 			</div>
 		)
 	}
@@ -386,60 +386,113 @@ export default function TemperaturePage() {
 	// --- New Charts: Combined variables, Rolling Averages, Diurnal, Cloud Scatter ---
 
 	function CombinedChart() {
-		const [selectedYear, setSelectedYear] = useState(years && years.length ? years[0] : null)
-		const [data, setData] = useState(null)
-		const varOptions = {
-			t2m_c: { label: 'Temperature (°C)', unit: '°C', axis: 'y' },
-			d2m_c: { label: 'Dew Point (°C)', unit: '°C', axis: 'y' },
-			sp_hpa: { label: 'Surface Pressure (hPa)', unit: 'hPa', axis: 'y1' },
-			tcc: { label: 'Total Cloud Cover (%)', unit: '%', axis: 'y' },
-		}
+	const [freq, setFreq] = useState('yearly')
+	const [selectedYear, setSelectedYear] = useState(null)
+	const [selectedMonth, setSelectedMonth] = useState(null)
+	const [data, setData] = useState(null)
+	
+	const varOptions = {
+		t2m_c: { label: 'Temperature (°C)', unit: '°C', axis: 'y' },
+		d2m_c: { label: 'Dew Point (°C)', unit: '°C', axis: 'y' },
+		sp_hpa: { label: 'Surface Pressure (hPa)', unit: 'hPa', axis: 'y1' },
+		tcc: { label: 'Total Cloud Cover (%)', unit: '%', axis: 'y' },
+	}
 
-		useEffect(() => {
+	useEffect(() => {
+		const vars = ['t2m_c', 'd2m_c', 'sp_hpa', 'tcc']
+		
+		if (freq === 'yearly') {
+			// All years, no filters
+			fetchTimeSeries({ freq: 'Y', vars }).then((res) => {
+				setData(res)
+			})
+		} else if (freq === 'monthly') {
+			// All months of selected year
 			if (!selectedYear) return
-			// fetch daily timeseries for all four variables
 			const start = `${selectedYear}-01-01`
 			const end = `${selectedYear}-12-31`
-			const vars = ['t2m_c', 'd2m_c', 'sp_hpa', 'tcc']
+			fetchTimeSeries({ freq: 'M', start, end, vars }).then((res) => {
+				setData(res)
+			})
+		} else if (freq === 'daily') {
+			// One month - daily data
+			if (!selectedYear || !selectedMonth) return
+			const start = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`
+			const lastDay = new Date(selectedYear, selectedMonth, 0).getDate()
+			const end = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}`
 			fetchTimeSeries({ freq: 'D', start, end, vars }).then((res) => {
 				setData(res)
 			})
-		}, [selectedYear])
-
-		if (!data) return <div>Loading combined chart...</div>
-
-		const labels = data.labels.map((ts) => ts.split('T')[0])
-		const datasets = []
-		// Temperature
-		if (data.series.t2m_c) datasets.push({ label: varOptions.t2m_c.label, data: data.series.t2m_c, borderColor: 'rgb(255,99,132)', backgroundColor: 'rgba(255,99,132,0.15)', yAxisID: 'y' })
-		// Dew point
-		if (data.series.d2m_c) datasets.push({ label: varOptions.d2m_c.label, data: data.series.d2m_c, borderColor: 'rgb(75,192,192)', backgroundColor: 'rgba(75,192,192,0.12)', yAxisID: 'y' })
-		// Surface pressure on right axis
-		if (data.series.sp_hpa) datasets.push({ label: varOptions.sp_hpa.label, data: data.series.sp_hpa, borderColor: 'rgb(54,162,235)', backgroundColor: 'rgba(54,162,235,0.12)', yAxisID: 'y1' })
-		// Cloud cover
-		if (data.series.tcc) datasets.push({ label: varOptions.tcc.label, data: data.series.tcc, borderColor: 'rgb(153,102,255)', backgroundColor: 'rgba(153,102,255,0.12)', yAxisID: 'y' })
-
-		const opts = {
-			...chartOptions,
-			scales: {
-				x: chartOptions.scales.x,
-				y: { type: 'linear', position: 'left', title: { display: true, text: '°C / %' } },
-				y1: { type: 'linear', position: 'right', title: { display: true, text: 'hPa' }, grid: { drawOnChartArea: false } },
-			}
 		}
+	}, [freq, selectedYear, selectedMonth])
 
-		return (
-			<div style={{ marginBottom: 24 }}>
-				<h3>Combined Variables — {selectedYear}</h3>
-				<div style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-					<label>Year: <select value={selectedYear || ''} onChange={(e) => setSelectedYear(Number(e.target.value))} style={{ marginLeft: 8 }}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
-					<div style={{ marginLeft: 8, color: '#555' }}>All variables shown; use the legend to toggle visibility.</div>
-				</div>
-				<Line data={{ labels, datasets }} options={opts} />
-			</div>
-		)
+	if (!data) return <div>Loading combined chart...</div>
+
+	const labels = data.labels.map((ts) => {
+		if (freq === 'yearly') return ts.split('-')[0]
+		if (freq === 'monthly') return ts.split('-')[1]
+		return ts.split('T')[0]
+	})
+	
+	const datasets = []
+	// Temperature
+	if (data.series.t2m_c) datasets.push({ label: varOptions.t2m_c.label, data: data.series.t2m_c, borderColor: 'rgb(255,99,132)', backgroundColor: 'rgba(255,99,132,0.15)', yAxisID: 'y' })
+	// Dew point
+	if (data.series.d2m_c) datasets.push({ label: varOptions.d2m_c.label, data: data.series.d2m_c, borderColor: 'rgb(75,192,192)', backgroundColor: 'rgba(75,192,192,0.12)', yAxisID: 'y' })
+	// Surface pressure on right axis
+	if (data.series.sp_hpa) datasets.push({ label: varOptions.sp_hpa.label, data: data.series.sp_hpa, borderColor: 'rgb(54,162,235)', backgroundColor: 'rgba(54,162,235,0.12)', yAxisID: 'y1' })
+	// Cloud cover
+	if (data.series.tcc) datasets.push({ label: varOptions.tcc.label, data: data.series.tcc, borderColor: 'rgb(153,102,255)', backgroundColor: 'rgba(153,102,255,0.12)', yAxisID: 'y' })
+
+	const opts = {
+		...chartOptions,
+		scales: {
+			x: chartOptions.scales.x,
+			y: { type: 'linear', position: 'left', title: { display: true, text: '°C / %' } },
+			y1: { type: 'linear', position: 'right', title: { display: true, text: 'hPa' }, grid: { drawOnChartArea: false } },
+		}
 	}
 
+	return (
+		<div style={{ marginBottom: 24 }}>
+			<h3>Combined Variables — {freq === 'yearly' ? 'All Years' : freq === 'monthly' ? `${selectedYear} (All Months)` : `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`}</h3>
+			<div style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+				<label>Frequency: 
+					<select value={freq} onChange={(e) => {
+						setFreq(e.target.value)
+						setSelectedYear(null)
+						setSelectedMonth(null)
+					}} style={{ marginLeft: 8 }}>
+						<option value='yearly'>Yearly</option>
+						<option value='monthly'>Monthly</option>
+						<option value='daily'>Daily</option>
+					</select>
+				</label>
+				{(freq === 'monthly' || freq === 'daily') && (
+					<label>Year: 
+						<select value={selectedYear || ''} onChange={(e) => {
+							setSelectedYear(e.target.value ? Number(e.target.value) : null)
+							setSelectedMonth(null)
+						}} style={{ marginLeft: 8 }}>
+							<option value=''>Select Year</option>
+							{years.map((y) => <option key={y} value={y}>{y}</option>)}
+						</select>
+					</label>
+				)}
+				{freq === 'daily' && selectedYear && (
+					<label>Month: 
+						<select value={selectedMonth || ''} onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : null)} style={{ marginLeft: 8 }}>
+							<option value=''>Select Month</option>
+							{Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}</option>)}
+						</select>
+					</label>
+				)}
+				<div style={{ marginLeft: 8, color: '#555' }}>All variables shown; use the legend to toggle visibility.</div>
+			</div>
+			<Line data={{ labels, datasets }} options={opts} />
+		</div>
+	)
+}
 	// rolling average helper
 	const rollingMean = (arr, window) => {
 		const res = new Array(arr.length).fill(null)
@@ -546,19 +599,37 @@ export default function TemperaturePage() {
 	}
 
 	return (
-		<div style={{ padding: 16 }}>
-			<h2>Temperature (t2m) — Dashboard Charts</h2>
-			<CombinedChart />
-			<RollingAverages />
-			<DiurnalChart />
-			<CloudScatter />
-			<YearlyChart />
-			<MonthlyChart />
-			<DailyChart />
-			<HistogramChart />
-			<MapHeatmap />
-			<BoxPlot />
-		</div>
-	)
+  <div className="p-4 h-full w-full overflow-hidden flex flex-col">
+    <h2 className="text-xl font-semibold mb-4">
+      Temperature (t2m) — Dashboard Charts
+    </h2>
+
+    {/* GRID DASHBOARD */}
+    <div className="
+      grid 
+      gap-4 
+      auto-rows-[minmax(200px,_1fr)]
+      grid-cols-1 
+      md:grid-cols-2 
+      xl:grid-cols-3 
+      2xl:grid-cols-3
+      overflow-y-auto
+      pr-2
+      flex-grow
+    ">
+      <div className="bg-white rounded-xl shadow p-4"><CombinedChart /></div>
+      <div className="bg-white rounded-xl shadow p-4"><RollingAverages /></div>
+      <div className="bg-white rounded-xl shadow p-4"><DiurnalChart /></div>
+      <div className="bg-white rounded-xl shadow p-4"><DailyChart /></div>
+      <div className="bg-white rounded-xl shadow p-4"><YearlyChart /></div>
+      <div className="bg-white rounded-xl shadow p-4"><MonthlyChart /></div>
+      <div className="bg-white rounded-xl shadow p-4"><CloudScatter /></div>
+      <div className="bg-white rounded-xl shadow p-4"><HistogramChart /></div>
+      <div className="bg-white rounded-xl shadow p-4"><MapHeatmap /></div>
+      <div className="bg-white rounded-xl shadow p-4"><BoxPlot /></div>
+    </div>
+  </div>
+);
+
 }
 
