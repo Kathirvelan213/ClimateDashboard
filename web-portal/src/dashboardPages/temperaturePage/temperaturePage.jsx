@@ -388,14 +388,20 @@ export default function TemperaturePage() {
 	function CombinedChart() {
 		const [selectedYear, setSelectedYear] = useState(years && years.length ? years[0] : null)
 		const [data, setData] = useState(null)
-		const [show, setShow] = useState({ t2m_c: true, d2m_c: true, sp_hpa: true })
+		const varOptions = {
+			t2m_c: { label: 'Temperature (°C)', unit: '°C', axis: 'y' },
+			d2m_c: { label: 'Dew Point (°C)', unit: '°C', axis: 'y' },
+			sp_hpa: { label: 'Surface Pressure (hPa)', unit: 'hPa', axis: 'y1' },
+			tcc: { label: 'Total Cloud Cover (%)', unit: '%', axis: 'y' },
+		}
 
 		useEffect(() => {
 			if (!selectedYear) return
-			// fetch daily timeseries for the year
+			// fetch daily timeseries for all four variables
 			const start = `${selectedYear}-01-01`
 			const end = `${selectedYear}-12-31`
-			fetchTimeSeries({ freq: 'D', start, end, vars: ['t2m_c', 'd2m_c', 'sp_hpa'] }).then((res) => {
+			const vars = ['t2m_c', 'd2m_c', 'sp_hpa', 'tcc']
+			fetchTimeSeries({ freq: 'D', start, end, vars }).then((res) => {
 				setData(res)
 			})
 		}, [selectedYear])
@@ -404,15 +410,20 @@ export default function TemperaturePage() {
 
 		const labels = data.labels.map((ts) => ts.split('T')[0])
 		const datasets = []
-		if (show.t2m_c && data.series.t2m_c) datasets.push({ label: 'Temperature (°C)', data: data.series.t2m_c, borderColor: 'rgb(255,99,132)', backgroundColor: 'rgba(255,99,132,0.2)', yAxisID: 'y' })
-		if (show.d2m_c && data.series.d2m_c) datasets.push({ label: 'Dew Point (°C)', data: data.series.d2m_c, borderColor: 'rgb(54,162,235)', backgroundColor: 'rgba(54,162,235,0.2)', yAxisID: 'y' })
-		if (show.sp_hpa && data.series.sp_hpa) datasets.push({ label: 'Surface Pressure (hPa)', data: data.series.sp_hpa, borderColor: 'rgb(75,192,192)', backgroundColor: 'rgba(75,192,192,0.2)', yAxisID: 'y1' })
+		// Temperature
+		if (data.series.t2m_c) datasets.push({ label: varOptions.t2m_c.label, data: data.series.t2m_c, borderColor: 'rgb(255,99,132)', backgroundColor: 'rgba(255,99,132,0.15)', yAxisID: 'y' })
+		// Dew point
+		if (data.series.d2m_c) datasets.push({ label: varOptions.d2m_c.label, data: data.series.d2m_c, borderColor: 'rgb(75,192,192)', backgroundColor: 'rgba(75,192,192,0.12)', yAxisID: 'y' })
+		// Surface pressure on right axis
+		if (data.series.sp_hpa) datasets.push({ label: varOptions.sp_hpa.label, data: data.series.sp_hpa, borderColor: 'rgb(54,162,235)', backgroundColor: 'rgba(54,162,235,0.12)', yAxisID: 'y1' })
+		// Cloud cover
+		if (data.series.tcc) datasets.push({ label: varOptions.tcc.label, data: data.series.tcc, borderColor: 'rgb(153,102,255)', backgroundColor: 'rgba(153,102,255,0.12)', yAxisID: 'y' })
 
 		const opts = {
 			...chartOptions,
 			scales: {
 				x: chartOptions.scales.x,
-				y: { type: 'linear', position: 'left', title: { display: true, text: '°C' } },
+				y: { type: 'linear', position: 'left', title: { display: true, text: '°C / %' } },
 				y1: { type: 'linear', position: 'right', title: { display: true, text: 'hPa' }, grid: { drawOnChartArea: false } },
 			}
 		}
@@ -420,11 +431,9 @@ export default function TemperaturePage() {
 		return (
 			<div style={{ marginBottom: 24 }}>
 				<h3>Combined Variables — {selectedYear}</h3>
-				<div style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'center' }}>
+				<div style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 					<label>Year: <select value={selectedYear || ''} onChange={(e) => setSelectedYear(Number(e.target.value))} style={{ marginLeft: 8 }}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
-					<label style={{ marginLeft: 8 }}><input type='checkbox' checked={show.t2m_c} onChange={(e) => setShow(s => ({ ...s, t2m_c: e.target.checked }))} /> Temperature</label>
-					<label style={{ marginLeft: 8 }}><input type='checkbox' checked={show.d2m_c} onChange={(e) => setShow(s => ({ ...s, d2m_c: e.target.checked }))} /> Dew Point</label>
-					<label style={{ marginLeft: 8 }}><input type='checkbox' checked={show.sp_hpa} onChange={(e) => setShow(s => ({ ...s, sp_hpa: e.target.checked }))} /> Surface Pressure</label>
+					<div style={{ marginLeft: 8, color: '#555' }}>All variables shown; use the legend to toggle visibility.</div>
 				</div>
 				<Line data={{ labels, datasets }} options={opts} />
 			</div>
