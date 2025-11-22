@@ -11,10 +11,8 @@ const client = new QueryClient();
 export default function App() {
   return (
     <QueryClientProvider client={client}>
-      <div className="w-full flex flex-col">
-        {/* <div className="w-[500px]">
-          <RollingAverages />
-        </div> */}
+      <div className="w-full h-[100vh] flex flex-col">
+
 
       <Tabs
         tabs={[

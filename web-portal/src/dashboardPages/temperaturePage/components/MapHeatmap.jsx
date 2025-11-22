@@ -115,7 +115,7 @@ export default function MapHeatmap() {
       {/* Map */}
       <div
         id="heatmap-map"
-        style={{ height: 350, width: "100%", borderRadius: 8 }}
+        style={{ height: "250px", width: "90%", borderRadius: 8, justifySelf: "center" }}
       />
 
       {/* Horizontal Legend */}

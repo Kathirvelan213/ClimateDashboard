@@ -83,7 +83,7 @@ export default function RollingAverages() {
   };
 
   return (
-    <div className="w-full p-4 bg-white rounded-xl shadow ">
+    <div className="w-full h-full p-4 bg-white rounded-xl shadow justify-center ">
       <h3 className="text-lg font-semibold mb-3">Rolling Averages — {year}</h3>
 
       {years && (
@@ -103,7 +103,7 @@ export default function RollingAverages() {
         </label>
       )}
 
-      <div style={{ height: 350 }}>
+      <div style={{ height: '100%' }}>
         <Line data={chartData} />
       </div>
     </div>

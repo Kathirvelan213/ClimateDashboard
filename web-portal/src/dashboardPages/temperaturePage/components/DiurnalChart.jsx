@@ -61,7 +61,7 @@ export default function DiurnalChart() {
   };
 
   return (
-    <div className="p-4 bg-white rounded-xl shadow w-full">
+    <div className="p-4 bg-white rounded-xl shadow w-full h-full">
       <h3 className="text-lg font-semibold mb-3">
         Diurnal Pattern by Month ({year})
       </h3>
@@ -81,7 +81,7 @@ export default function DiurnalChart() {
         </label>
       )}
 
-      <div style={{ height: 300 }}>
+      <div>
         <Line data={chartData} />
       </div>
     </div>

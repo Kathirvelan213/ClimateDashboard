@@ -67,11 +67,11 @@ export default function CloudScatter() {
   };
 
   return (
-    <div className="p-4 bg-white rounded-xl shadow w-full">
-      <h3 className="text-lg font-semibold mb-3">Cloud Cover vs Temperature</h3>
+    <div className="bg-white rounded-xl shadow w-full h-full justify-content-center">
+      <h3 className="text-lg font-semibold">Cloud Cover vs Temperature</h3>
 
       {years && (
-        <label className="mb-2 block">
+        <label className="block">
           Year:&nbsp;
           <select
             value={year}
@@ -85,7 +85,7 @@ export default function CloudScatter() {
         </label>
       )}
 
-      <div style={{ height: 300 }}>
+      <div className="h-[100%] justify-self-center">
         <Scatter data={chartData} options={options} />
       </div>
     </div>

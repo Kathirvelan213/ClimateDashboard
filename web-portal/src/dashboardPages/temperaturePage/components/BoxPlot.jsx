@@ -30,13 +30,13 @@ export default function BoxPlot() {
     padding + ((v - minVal) / (maxVal - minVal)) * (width - padding * 2);
 
   return (
-    <div className="w-full">
-      <h3 className="font-semibold text-lg mb-2">
+    <div className="w-full h-full justify-self-center">
+      <h3 className="font-semibold text-lg">
         Box Plot — {year || "All Years"} {month ? `- ${month}` : ""}
       </h3>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-3">
+      <div className="flex gap-3 mb-3 ">
         <select
           className="border px-2 py-1 rounded"
           value={year || ""}
@@ -61,7 +61,7 @@ export default function BoxPlot() {
       </div>
 
       {/* Boxplot */}
-      <svg width={width} height={height} className="border border-gray-200 rounded">
+      <svg width={width} height={height} className="border border-gray-200 rounded justify-self-center">
         <line
           x1={scale(stats.lower_whisker)}
           x2={scale(stats.upper_whisker)}
@@ -126,7 +126,7 @@ export default function BoxPlot() {
       {/* Outliers list — safe */}
       <div className="mt-3">
         <strong>Outliers (showing {outliers.length}):</strong>
-        <ul className="max-h-40 overflow-auto list-disc ml-5">
+        <ul className="max-h-[200px] overflow-auto list-disc ml-5">
           {outliers.map((o, i) => (
             <li key={i}>
               {o.valid_time} — {o.temp_c.toFixed(2)}°C @ {o.latitude.toFixed(3)},

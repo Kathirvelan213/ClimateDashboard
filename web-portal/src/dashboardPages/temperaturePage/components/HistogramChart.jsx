@@ -30,22 +30,16 @@ export default function HistogramChart() {
     counts[idx]++;
   }
 
-  const labels = counts.map(
-    (_, i) => `${(min + i * width).toFixed(1)} - ${(min + (i + 1) * width).toFixed(1)}`
-  );
+  const labels = counts.map((_, i) => `${(min + i * width).toFixed(1)} - ${(min + (i + 1) * width).toFixed(1)}`);
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <h3 className="text-lg font-semibold mb-2">Temperature Histogram</h3>
 
       {/* Filters */}
       <div className="flex gap-3 mb-3">
         {/* Year */}
-        <select
-          className="border rounded px-2 py-1"
-          value={year || ""}
-          onChange={(e) => setYear(e.target.value ? Number(e.target.value) : null)}
-        >
+        <select className="border rounded px-2 py-1" value={year || ""} onChange={(e) => setYear(e.target.value ? Number(e.target.value) : null)}>
           <option value="">All Years</option>
           {years?.map((y) => (
             <option key={y} value={y}>
@@ -55,11 +49,7 @@ export default function HistogramChart() {
         </select>
 
         {/* Month */}
-        <select
-          className="border rounded px-2 py-1"
-          value={month || ""}
-          onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : null)}
-        >
+        <select className="border rounded px-2 py-1" value={month || ""} onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : null)}>
           <option value="">All Months</option>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
             <option value={m} key={m}>
@@ -68,23 +58,24 @@ export default function HistogramChart() {
           ))}
         </select>
       </div>
-
-      <Bar
-        data={{
-          labels,
-          datasets: [
-            {
-              label: "Frequency",
-              data: counts,
-              backgroundColor: "rgba(153,102,255,0.6)",
-            },
-          ],
-        }}
-        options={{
-          plugins: { legend: { display: false } },
-          responsive: true,
-        }}
-      />
+      <div className="">
+        <Bar
+          data={{
+            labels,
+            datasets: [
+              {
+                label: "Frequency",
+                data: counts,
+                backgroundColor: "rgba(153,102,255,0.6)",
+              },
+            ],
+          }}
+          options={{
+            plugins: { legend: { display: false } },
+            responsive: true,
+          }}
+        />
+      </div>
     </div>
   );
 }
