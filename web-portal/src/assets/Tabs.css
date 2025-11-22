@@ -32,4 +32,5 @@
 .tab-content {
     padding-top: 4px;
     display: flex;
+    max-height: 100vh;
 }
