@@ -33,4 +33,5 @@
 .tab-content {
     display: flex;
     height: 97%;
+    justify-content: center ;
 }

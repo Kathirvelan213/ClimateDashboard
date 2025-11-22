@@ -40,6 +40,11 @@ def load_and_prepare():
 
 DF = load_and_prepare()
 
+DF_P = pd.read_csv(os.path.join(os.path.dirname(__file__), 'assets', 'Dataset', 'combined_instant_temp.csv'), parse_dates=["valid_time"])
+DF_P["tp_mm"] = DF_P["tp"] * 1000  # ERA5 tp is meters → convert to mm
+DF_P["year"] = DF_P["valid_time"].dt.year
+DF_P["month"] = DF_P["valid_time"].dt.month
+DF_P["day"] = DF_P["valid_time"].dt.day
 
 @APP.route('/api/temperature/years')
 def available_years():
@@ -460,6 +465,341 @@ def boxplot():
     }
     return jsonify(result)
 
+# ---------------------------
+#   PRECIPITATION ENDPOINTS
+# ---------------------------
+
+@APP.route('/api/precip/years')
+def precip_years():
+    years = sorted(DF['year'].unique().tolist())
+    return jsonify(years)
+
+
+@APP.route('/api/precip/yearly')
+def precip_yearly():
+    s = DF.groupby('year')['tp_mm'].mean().reset_index()
+    result = [{'year': int(r['year']), 'tp_mm': float(r['tp_mm'])} for _, r in s.iterrows()]
+    return jsonify(result)
+
+
+@APP.route('/api/precip/monthly')
+def precip_monthly():
+    year = request.args.get('year', type=int)
+    if year is None:
+        return jsonify({'error': 'missing year'}), 400
+    sub = DF[DF['year'] == year]
+    s = sub.groupby('month')['tp_mm'].mean().reset_index()
+    month_map = {int(r['month']): float(r['tp_mm']) for _, r in s.iterrows()}
+    return [{'month': m, 'tp_mm': month_map.get(m, None)} for m in range(1, 13)]
+
+
+@APP.route('/api/precip/daily')
+def precip_daily():
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    sub = DF[(DF['year'] == year) & (DF['month'] == month)]
+    s = sub.groupby('day')['tp_mm'].mean().reset_index()
+    return [{'day': int(r['day']), 'tp_mm': float(r['tp_mm'])} for _, r in s.iterrows()]
+
+
+@APP.route('/api/precip/histogram')
+def precip_histogram():
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    sub = DF.copy()
+    if year is not None:
+        sub = sub[sub['year'] == year]
+    if month is not None:
+        sub = sub[sub['month'] == month]
+    temps = sub['tp_mm'].tolist()
+    return jsonify(temps)
+
+@APP.route('/api/precip/timeseries')
+def precip_timeseries():
+    """
+    Return aggregated precipitation time series.
+    Query params:
+      freq: 'D', 'M', 'Y'
+      start, end: ISO dates
+      vars: comma-separated variables (only tp_mm used)
+    """
+    freq = request.args.get('freq', default='D')
+    start = request.args.get('start')
+    end = request.args.get('end')
+    vars_q = request.args.get('vars')
+
+    # Precip only uses tp_mm but keep interface consistent
+    allowed = ['tp_mm']
+    vars_list = allowed if not vars_q else [v for v in vars_q.split(',') if v in allowed]
+
+    sub = DF_P.copy()
+
+    if start:
+        sub = sub[sub['valid_time'] >= pd.to_datetime(start)]
+    if end:
+        sub = sub[sub['valid_time'] <= pd.to_datetime(end)]
+    if sub.empty:
+        return jsonify([])
+
+    s = sub.set_index('valid_time')
+
+    rule = {'D': 'D', 'M': 'M', 'Y': 'Y'}.get(freq.upper(), 'D')
+    agg = s[vars_list].resample(rule).sum().reset_index()
+
+    out = []
+    for _, r in agg.iterrows():
+        entry = {'timestamp': r['valid_time'].isoformat()}
+        for v in vars_list:
+            val = r.get(v)
+            entry[v] = None if pd.isna(val) else float(val)
+        out.append(entry)
+
+    return jsonify(out)
+
+@APP.route('/api/precip/scatter')
+def precip_scatter():
+    """Return sampled pairs for scatter plotting."""
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    limit = request.args.get('limit', default=2000, type=int)
+
+    sub = DF
+    if year is not None:
+        sub = sub[sub['year'] == year]
+    if month is not None:
+        sub = sub[sub['month'] == month]
+
+    if sub.empty:
+        return jsonify([])
+
+    # SAMPLE to avoid massive payloads (just like temperature)
+    if limit and len(sub) > limit:
+        sample = sub.sample(n=limit, random_state=7)
+    else:
+        sample = sub
+
+    points = []
+    for _, r in sample.iterrows():
+        points.append({
+            'latitude': float(r['latitude']),
+            'longitude': float(r['longitude']),
+            'tp_mm': None if pd.isna(r.get('tp_mm')) else float(r['tp_mm']),
+            'tcc': None if pd.isna(r.get('tcc')) else float(r['tcc'])
+        })
+
+    return jsonify(points)
+
+@APP.route('/api/precip/diurnal')
+def precip_diurnal():
+    """Return average precipitation values by hour-of-day for provided filters."""
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    hours_q = request.args.get('hours')
+
+    sub = DF
+    if year is not None:
+        sub = sub[sub['year'] == year]
+    if month is not None:
+        sub = sub[sub['month'] == month]
+
+    if sub.empty:
+        return jsonify([])
+
+    sub = sub.copy()
+    sub['hour'] = sub['valid_time'].dt.hour
+
+    group = sub.groupby('hour').agg({'tp_mm': 'mean'}).reset_index()
+
+    if hours_q:
+        hours = [int(h) for h in hours_q.split(',')]
+        group = group[group['hour'].isin(hours)]
+
+    result = []
+    for _, r in group.iterrows():
+        result.append({
+            'hour': int(r['hour']),
+            'tp_mm': None if pd.isna(r['tp_mm']) else float(r['tp_mm']),
+        })
+
+    return jsonify(result)
+
+@APP.route('/api/precip/histogram_daily')
+def precip_histogram_daily():
+    """Return histogram values for DAILY total precipitation."""
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+
+    sub = DF
+    if year is not None:
+        sub = sub[sub['year'] == year]
+    if month is not None:
+        sub = sub[sub['month'] == month]
+
+    if sub.empty:
+        return jsonify([])
+
+    # convert tp_mm to daily totals
+    daily = sub.groupby(['year', 'month', 'day'])['tp_mm'].sum().reset_index()
+
+    vals = daily['tp_mm'].tolist()
+    return jsonify(vals)
+
+
+@APP.route('/api/precip/boxplot')
+def precip_boxplot():
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    sub = DF.copy()
+    if year is not None: sub = sub[sub['year'] == year]
+    if month is not None: sub = sub[sub['month'] == month]
+    vals = sub['tp_mm']
+    q1 = float(vals.quantile(0.25))
+    q2 = float(vals.quantile(0.5))
+    q3 = float(vals.quantile(0.75))
+    iqr = q3 - q1
+    lb = q1 - 1.5 * iqr
+    ub = q3 + 1.5 * iqr
+
+    non_out = vals[(vals >= lb) & (vals <= ub)]
+    lw = float(non_out.min()) if not non_out.empty else float(vals.min())
+    uw = float(non_out.max()) if not non_out.empty else float(vals.max())
+
+    outliers = []
+    out_rows = sub[(vals < lb) | (vals > ub)]
+    for _, r in out_rows.iterrows():
+        outliers.append({
+            'valid_time': r['valid_time'].isoformat(),
+            'latitude': float(r['latitude']),
+            'longitude': float(r['longitude']),
+            'tp_mm': float(r['tp_mm'])
+        })
+
+    return jsonify({
+        'count': len(vals),
+        'q1': q1, 'q2': q2, 'q3': q3,
+        'iqr': iqr,
+        'lower_whisker': lw,
+        'upper_whisker': uw,
+        'lower_bound': lb,
+        'upper_bound': ub,
+        'outliers': outliers
+    })
+from flask_cors import cross_origin
+
+@APP.route('/api/precip/heat_raster')
+@cross_origin()
+def precip_heat_raster():
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    width = request.args.get('width', default=600, type=int)
+    height = request.args.get('height', default=400, type=int)
+    power = request.args.get('power', default=2.0, type=float)
+    padding = request.args.get('padding', default=0.02, type=float)
+
+    sub = DF_P
+    if year is not None:
+        sub = sub[sub['year'] == year]
+    if month is not None:
+        sub = sub[sub['month'] == month]
+
+    if sub.empty:
+        return jsonify({'error': 'no precip data'}), 400
+
+    # average precipitation per unique location
+    pts = sub.groupby(['latitude', 'longitude'])['tp_mm'].mean().reset_index()
+    lats = pts['latitude'].values
+    lons = pts['longitude'].values
+    vals = pts['tp_mm'].values
+
+    # bbox
+    min_lat, max_lat = lats.min(), lats.max()
+    min_lon, max_lon = lons.min(), lons.max()
+    lat_pad = (max_lat - min_lat) * padding or 0.01
+    lon_pad = (max_lon - min_lon) * padding or 0.01
+    min_lat -= lat_pad
+    max_lat += lat_pad
+    min_lon -= lon_pad
+    max_lon += lon_pad
+
+    # -------------------------------
+    # SAME COARSE GRID AS TEMPERATURE
+    # -------------------------------
+    grid_cols = request.args.get('grid_cols', type=int)
+    grid_rows = request.args.get('grid_rows', type=int)
+
+    if grid_cols and grid_rows:
+        lat_bins = np.linspace(min_lat, max_lat, grid_rows + 1)
+        lon_bins = np.linspace(min_lon, max_lon, grid_cols + 1)
+        grid_small = np.full((grid_rows, grid_cols), np.nan)
+        counts = np.zeros((grid_rows, grid_cols), dtype=int)
+
+        for lat, lon, val in zip(lats, lons, vals):
+            r = np.searchsorted(lat_bins, lat, side='right') - 1
+            c = np.searchsorted(lon_bins, lon, side='right') - 1
+            if 0 <= r < grid_rows and 0 <= c < grid_cols:
+                if np.isnan(grid_small[r, c]):
+                    grid_small[r, c] = val
+                else:
+                    grid_small[r, c] += val
+                counts[r, c] += 1
+
+        mask = counts > 0
+        grid_small[mask] = grid_small[mask] / counts[mask]
+
+        # fill empty cells nearest-neighbour
+        if np.any(np.isnan(grid_small)):
+            coords = [(i, j) for i in range(grid_rows) for j in range(grid_cols)
+                      if not np.isnan(grid_small[i, j])]
+            for i in range(grid_rows):
+                for j in range(grid_cols):
+                    if np.isnan(grid_small[i, j]):
+                        best = None
+                        bestd = None
+                        for ii, jj in coords:
+                            d = (ii - i) ** 2 + (jj - j) ** 2
+                            if best is None or d < bestd:
+                                best = (ii, jj)
+                                bestd = d
+                        grid_small[i, j] = grid_small[best]
+
+        repeat_y = max(1, height // grid_rows)
+        repeat_x = max(1, width // grid_cols)
+        GRID = np.kron(grid_small, np.ones((repeat_y, repeat_x)))
+        GRID = GRID[:height, :width]
+
+    else:
+        # fallback IDW
+        xi = np.linspace(min_lat, max_lat, height)
+        yi = np.linspace(min_lon, max_lon, width)
+        XI, YI = np.meshgrid(yi, xi)
+        stations = np.vstack([lats, lons]).T
+        grid_vals = np.zeros(XI.size)
+
+        for i, (gx, gy) in enumerate(zip(YI.ravel(), XI.ravel())):
+            d = np.sqrt((stations[:, 0] - gy)**2 + (stations[:, 1] - gx)**2)
+            if np.any(d == 0):
+                grid_vals[i] = vals[d == 0][0]
+            else:
+                w = 1.0 / (d ** power)
+                grid_vals[i] = np.sum(vals * w) / np.sum(w)
+
+        GRID = grid_vals.reshape(XI.shape)
+
+    # render PNG
+    fig = plt.figure(figsize=(width/100, height/100), dpi=100)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_axis_off()
+
+    cmap = plt.get_cmap('YlGnBu')
+    ax.imshow(GRID, cmap=cmap, origin='lower',
+              extent=(min_lon, max_lon, min_lat, max_lat))
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", transparent=True)
+    plt.close(fig)
+    buf.seek(0)
+
+    return APP.response_class(buf.getvalue(), mimetype="image/png")
 
 
 if __name__ == '__main__':
