@@ -91,20 +91,14 @@ export default function CombinedChart() {
   }));
 
   return (
-    <div className="w-full">
-      <h3 className="text-lg font-semibold mb-3">
-        Combined Variables — {freq}
-      </h3>
+    <div>
+      <h3 className="text-lg font-semibold mb-3">Combined Variables — {freq}</h3>
 
       {/* Controls */}
-      <div className="flex flex-wrap gap-4 mb-4">
+      <div className="flex flex-wrap gap-4 mb-4 ">
         <label>
           Frequency:
-          <select
-            value={freq}
-            onChange={(e) => setFreq(e.target.value)}
-            className="ml-2 border px-2 py-1 rounded"
-          >
+          <select value={freq} onChange={(e) => setFreq(e.target.value)} className="ml-2 border px-2 py-1 rounded">
             <option value="yearly">Yearly</option>
             <option value="monthly">Monthly</option>
             <option value="daily">Daily</option>
@@ -114,11 +108,7 @@ export default function CombinedChart() {
         {freq !== "yearly" && (
           <label>
             Year:
-            <select
-              value={year || ""}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="ml-2 border px-2 py-1 rounded"
-            >
+            <select value={year || ""} onChange={(e) => setYear(Number(e.target.value))} className="ml-2 border px-2 py-1 rounded">
               {years?.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -131,11 +121,7 @@ export default function CombinedChart() {
         {freq === "daily" && (
           <label>
             Month:
-            <select
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-              className="ml-2 border px-2 py-1 rounded"
-            >
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="ml-2 border px-2 py-1 rounded">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m}>
                   {m}
@@ -147,27 +133,27 @@ export default function CombinedChart() {
       </div>
 
       {/* CHART */}
-      <div className="h-[350px] w-full">
-  <Line
-    data={{ labels, datasets }}
-        options={{
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              type: "linear",
-              position: "left",
-              title: { display: true, text: "Temperature / Dew Point / Cloud" },
+      <div className="h-[500px] w-[900px] justify-self-center self-center contents-center">
+        <Line
+          data={{ labels, datasets }}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                type: "linear",
+                position: "left",
+                title: { display: true, text: "Temperature / Dew Point / Cloud" },
+              },
+              y1: {
+                type: "linear",
+                position: "right",
+                grid: { drawOnChartArea: false },
+                title: { display: true, text: "Surface Pressure (hPa)" },
+              },
             },
-            y1: {
-              type: "linear",
-              position: "right",
-              grid: { drawOnChartArea: false },
-              title: { display: true, text: "Surface Pressure (hPa)" },
-            },
-          },
-        }}
-      />
+          }}
+        />
       </div>
     </div>
   );

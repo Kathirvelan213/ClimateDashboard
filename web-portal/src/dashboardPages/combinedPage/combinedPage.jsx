@@ -2,10 +2,10 @@ import CombinedChart from "./components/CombinedChart";
 
 export function CombinedPage() {
   return (
-    <div className="p-4 h-full w-full overflow-hidden flex flex-col">
-      <h2 className="text-xl font-semibold mb-4">Combined Variables (t2m) — Dashboard Charts</h2>
+    <div className="p-4 h-full overflow-hidden flex flex-col">
+      <h2 className="text-xl font-semibold mb-4">Combined Variables — Dashboard Charts</h2>
 
-      <div
+      {/* <div
         className="
               grid gap-4 
               auto-rows-[minmax(300px,500px)]
@@ -15,12 +15,12 @@ export function CombinedPage() {
               2xl:grid-cols-3
               overflow-y-auto
               pr-2
-              flex-grow
-            ">
-        <div className="bg-white rounded-xl shadow p-4">
+              flex-grow"
+              > */}
+        <div className="bg-white rounded-xl shadow p-4 h-full center content-center">
           <CombinedChart />
         </div>
-      </div>
+      {/* </div> */}
     </div>
   );
 }

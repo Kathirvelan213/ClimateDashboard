@@ -20,11 +20,11 @@ export default function App() {
               content: <TemperaturePage />,
             },
             {
-              label: "Tab2",
+              label: "Precipitation",
               content: <PrecipitationPage />,
             },
             {
-              label: "Tab3",
+              label: "Combined",
               content: <CombinedPage />,
             },
           ]}
