@@ -13,28 +13,27 @@ CORS(APP)
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'assets', 'Dataset', 'combined_instant_temp.csv')
 
-
 def load_and_prepare():
-    # Read CSV with parse_dates for the valid_time column
     df = pd.read_csv(DATA_PATH, parse_dates=['valid_time'])
-    # convert Kelvin to Celsius
+
+    # Temperature
     df['t2m_c'] = df['t2m'] - 273.15
-    # dew point (d2m) to Celsius
-    if 'd2m' in df.columns:
-        df['d2m_c'] = df['d2m'] - 273.15
+    df['d2m_c'] = df['d2m'] - 273.15 if 'd2m' in df.columns else pd.NA
+    df['sp_hpa'] = df['sp'] / 100.0 if 'sp' in df.columns else pd.NA
+
+    # Wind direction (meteorological)
+    if 'u10' in df.columns and 'v10' in df.columns:
+        df['wind_dir'] = (270 - np.degrees(np.arctan2(df['v10'], df['u10']))) % 360
     else:
-        df['d2m_c'] = pd.NA
-    # surface pressure to hPa if present
-    if 'sp' in df.columns:
-        try:
-            df['sp_hpa'] = df['sp'] / 100.0
-        except Exception:
-            df['sp_hpa'] = df['sp']
-    else:
-        df['sp_hpa'] = pd.NA
+        df['wind_dir'] = pd.NA
+
     df['year'] = df['valid_time'].dt.year
     df['month'] = df['valid_time'].dt.month
     df['day'] = df['valid_time'].dt.day
+
+    df['wind_speed'] = np.sqrt(df['u10']**2 + df['v10']**2)
+
+
     return df
 
 
@@ -800,6 +799,62 @@ def precip_heat_raster():
     buf.seek(0)
 
     return APP.response_class(buf.getvalue(), mimetype="image/png")
+
+@APP.route("/api/temperature/correlation")
+def correlation():
+    # Variables to keep:
+    cols = [
+        "u10", "v10",
+        "d2m", "t2m",
+        "sp_hpa", "tcc",
+        "slt",
+        "tp"   # keep tp, remove tp_mm
+    ]
+
+    # filter to ONLY available columns
+    available = [c for c in cols if c in DF.columns]
+
+    sub = DF[available].dropna()
+
+    # drop constant columns (zero variance)
+    sub = sub.loc[:, sub.std() != 0]
+
+    # compute correlation
+    corr = sub.corr()
+
+    # replace NaNs with 0
+    corr = corr.fillna(0)
+
+    return jsonify({
+        "variables": corr.columns.tolist(),
+        "matrix": corr.values.tolist()
+    })
+
+@APP.route('/api/temperature/wind_direction')
+def wind_direction():
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+
+    sub = DF
+    if year is not None:
+        sub = sub[sub['year'] == year]
+    if month is not None:
+        sub = sub[sub['month'] == month]
+
+    if sub.empty:
+        return jsonify([])
+
+    # Return timestamp + wind_dir
+    out = []
+    for _, r in sub.iterrows():
+        out.append({
+            'timestamp': r['valid_time'].isoformat(),
+            'wind_dir': float(r['wind_dir']),
+            'u10': float(r['u10']),
+            'v10': float(r['v10'])
+        })
+
+    return jsonify(out)
 
 
 if __name__ == '__main__':

@@ -133,7 +133,7 @@ export default function CombinedChart() {
       </div>
 
       {/* CHART */}
-      <div className="h-[500px] w-[900px] justify-self-center self-center contents-center">
+      <div className="h-[300px] w-[100%] justify-self-center self-center contents-center">
         <Line
           data={{ labels, datasets }}
           options={{

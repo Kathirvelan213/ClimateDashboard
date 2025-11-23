@@ -1,26 +1,23 @@
 import CombinedChart from "./components/CombinedChart";
+import CorrelationChart from "./components/CorrelationMatrix";
+import WindDirectionChart from "./components/WiindRoseChart";
 
 export function CombinedPage() {
   return (
-    <div className="p-4 h-full overflow-hidden flex flex-col">
-      <h2 className="text-xl font-semibold mb-4">Combined Variables — Dashboard Charts</h2>
+    <div className="grid grid-rows-2 grid-cols-2 gap-4 h-[95%] justify-self-center justify-content-center p-4 overflow-hidden w-[85%] justify-self-center">
+      <DashboardCard><CombinedChart /></DashboardCard>
+      <DashboardCard><CorrelationChart /></DashboardCard>
+      <div className="col-span-2">
+      <WindDirectionChart year={2023} month={1} />
+      </div>
+    </div>
+  );
+}
 
-      {/* <div
-        className="
-              grid gap-4 
-              auto-rows-[minmax(300px,500px)]
-              grid-cols-1 
-              md:grid-cols-2 
-              xl:grid-cols-3 
-              2xl:grid-cols-3
-              overflow-y-auto
-              pr-2
-              flex-grow"
-              > */}
-        <div className="bg-white rounded-xl shadow p-4 h-full center content-center">
-          <CombinedChart />
-        </div>
-      {/* </div> */}
+function DashboardCard({ children, className }) {
+  return (
+    <div className={`bg-white rounded-xl shadow flex flex-col overflow-hidden h-full ${className}`}>
+      <div className="flex-grow h-full">{children}</div>
     </div>
   );
 }
