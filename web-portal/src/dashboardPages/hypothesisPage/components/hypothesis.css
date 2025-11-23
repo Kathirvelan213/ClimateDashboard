@@ -1,0 +1,67 @@
+.hypothesis-page {
+  padding: 20px 40px;
+  font-family: Arial, sans-serif;
+  background: #f8fafc;
+}
+
+.controls-bar {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.controls-bar div {
+  display: flex;
+  flex-direction: column;
+  font-weight: bold;
+}
+
+.controls-bar select {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-top: 5px;
+}
+
+.hypothesis-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.left-panel, .right-panel {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0px 4px 8px rgba(0,0,0,0.08);
+}
+
+.right-panel{
+    text-align: left;
+}
+.right-panel h2, 
+.right-panel h3 {
+  margin-top: 10px;
+  color: #1565c0;
+}
+
+.formula-box {
+  background: #e3f2fd;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  text-align: center;
+  margin: 10px 0;
+  font-family: monospace;
+}
+
+.right-panel ul {
+  padding-left: 20px;
+}
+
+.right-panel li {
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}

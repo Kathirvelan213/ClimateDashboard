@@ -1,12 +1,11 @@
-import { useState } from "react";
 import "./App.css";
 import Tabs from "./assets/Tabs";
 import TemperaturePage from "./dashboardPages/temperaturePage/temperaturePage";
 import { CombinedPage } from "./dashboardPages/combinedPage/combinedPage";
 import "./assets/chartSetup";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import RollingAverages from "./dashboardPages/temperaturePage/components/RollingAverages";
 import PrecipitationPage from "./dashboardPages/precipitationPage/precipitationPage";
+import HypothesisPage from "./dashboardPages/hypothesisPage/HypothesisPage";
 const client = new QueryClient();
 
 export default function App() {
@@ -26,6 +25,10 @@ export default function App() {
             {
               label: "Combined",
               content: <CombinedPage />,
+            },
+            {
+              label: "Hypothesis Testing",
+              content: <HypothesisPage />,
             },
           ]}
         />

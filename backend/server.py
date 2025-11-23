@@ -856,6 +856,47 @@ def wind_direction():
 
     return jsonify(out)
 
+from scipy.stats import ttest_ind
+
+@APP.route("/api/hypothesis/cloud_vs_temp")
+def cloud_vs_temp():
+
+    year = request.args.get("year", type=int)
+    month = request.args.get("month", type=int)
+
+    sub = DF.copy()
+
+    if year is not None:
+        sub = sub[sub["year"] == year]
+    if month is not None:
+        sub = sub[sub["month"] == month]
+
+    # Drop NaNs
+    sub = sub.dropna(subset=["tcc", "t2m_c"])
+
+    # Define 2 groups
+    low_cloud = sub[sub["tcc"] < 0.4]["t2m_c"]
+    high_cloud = sub[sub["tcc"] > 0.7]["t2m_c"]
+
+    if len(low_cloud) < 10 or len(high_cloud) < 10:
+        return jsonify({"error": "Not enough data for hypothesis testing"}), 400
+
+    t_stat, p_value = ttest_ind(low_cloud, high_cloud)
+
+    result = {
+        "null_hypothesis": "Cloud cover has no effect on temperature",
+        "alt_hypothesis": "Cloud cover significantly affects temperature",
+        "group1_label": "Low Cloud Cover (<40%)",
+        "group2_label": "High Cloud Cover (>70%)",
+        "group1_mean": float(low_cloud.mean()),
+        "group2_mean": float(high_cloud.mean()),
+        "t_statistic": float(t_stat),
+        "p_value": float(p_value),
+        "decision": "Reject H0" if p_value < 0.05 else "Fail to Reject H0"
+    }
+
+    return jsonify(result)
+
 
 if __name__ == '__main__':
     APP.run(host='0.0.0.0', port=5000, debug=True)
