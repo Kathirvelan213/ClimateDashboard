@@ -897,6 +897,62 @@ def cloud_vs_temp():
 
     return jsonify(result)
 
+from scipy.stats import ttest_ind
+
+@APP.route("/api/hypothesis/general")
+def general_hypothesis():
+
+    target = request.args.get("target")   # t2m_c or tp_mm
+    feature = request.args.get("feature") # tcc, u10, v10, etc.
+    year = request.args.get("year", type=int)
+    month = request.args.get("month", type=int)
+
+    if target is None or feature is None:
+        return jsonify({"error": "target and feature parameters are required"}), 400
+
+    sub = DF.copy()
+
+    if year is not None:
+        sub = sub[sub["year"] == year]
+    if month is not None:
+        sub = sub[sub["month"] == month]
+
+    if target not in sub.columns or feature not in sub.columns:
+        return jsonify({"error": "Invalid variables selected"}), 400
+
+    sub = sub.dropna(subset=[target, feature])
+
+    if len(sub) < 100:
+        return jsonify({"error": "Not enough data"}), 400
+
+    # Split by quantiles
+    low_thresh = sub[feature].quantile(0.3)
+    high_thresh = sub[feature].quantile(0.7)
+
+    group_low = sub[sub[feature] <= low_thresh][target]
+    group_high = sub[sub[feature] >= high_thresh][target]
+
+    if len(group_low) < 20 or len(group_high) < 20:
+        return jsonify({"error": "Not enough samples in groups"}), 400
+
+    t_stat, p_value = ttest_ind(group_low, group_high)
+
+    result = {
+        "target": target,
+        "feature": feature,
+        "group_low_mean": float(group_low.mean()),
+        "group_high_mean": float(group_high.mean()),
+        "t_statistic": float(t_stat),
+        "p_value": float(p_value),
+        "low_threshold": float(low_thresh),
+        "high_threshold": float(high_thresh),
+        "decision": "Reject H0" if p_value < 0.05 else "Fail to Reject H0",
+        "null_hypothesis": f"{feature} has no effect on {target}",
+        "alt_hypothesis": f"{feature} significantly affects {target}"
+    }
+
+    return jsonify(result)
+
 
 if __name__ == '__main__':
     APP.run(host='0.0.0.0', port=5000, debug=True)

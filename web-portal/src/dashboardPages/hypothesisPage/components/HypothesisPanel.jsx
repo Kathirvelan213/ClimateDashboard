@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react";
 import "./hypothesis.css";
 
+export default function HypothesisPanel({ year, month, target, feature }) {
 
-export default function HypothesisPanel({ year, month }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const fetchHypothesis = async () => {
-    if (!year) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      let url = `http://localhost:5000/api/hypothesis/cloud_vs_temp?year=${year}`;
+      let url = `http://localhost:5000/api/hypothesis/general?year=${year}&target=${target}&feature=${feature}`;
 
-      // Only send month if it exists
-      if (month !== null && month !== undefined) {
+      if (month !== null) {
         url += `&month=${month}`;
       }
 
@@ -25,7 +22,7 @@ export default function HypothesisPanel({ year, month }) {
       const json = await res.json();
 
       if (!res.ok || json.error) {
-        setError(json.error || "Failed to fetch hypothesis result");
+        setError(json.error || "Hypothesis test failed");
         setData(null);
       } else {
         setData(json);
@@ -42,57 +39,58 @@ export default function HypothesisPanel({ year, month }) {
 
   useEffect(() => {
     fetchHypothesis();
-  }, [year, month]);
+  }, [year, month, target, feature]);
 
-  if (loading) {
-    return <div className="hypothesis-panel">Running hypothesis test...</div>;
-  }
+  if (loading) return <div className="hypothesis-panel">Running hypothesis test...</div>;
 
-  if (error) {
+  if (error)
     return (
       <div className="hypothesis-panel error">
         <h3>Hypothesis Test</h3>
         <p style={{ color: "red" }}>{error}</p>
       </div>
     );
-  }
 
-  if (!data) {
-    return <div className="hypothesis-panel">No data yet...</div>;
-  }
+  if (!data) return <div className="hypothesis-panel">No results yet...</div>;
 
   return (
     <div className="hypothesis-panel">
-      <b>Hypothesis: Cloud Cover vs Temperature</b>
-      <br/>
-      <br/>
+
+      <h3>Hypothesis Test Results</h3>
 
       <div className="hypothesis-theory">
         <p><strong>H₀:</strong> {data.null_hypothesis}</p>
         <p><strong>H₁:</strong> {data.alt_hypothesis}</p>
       </div>
-        <br/>
+
+      <br />
+
       <div className="hypothesis-results">
-        <p><strong>{data.group1_label} Mean:</strong> {data.group1_mean.toFixed(2)} °C</p>
-        <p><strong>{data.group2_label} Mean:</strong> {data.group2_mean.toFixed(2)} °C</p>
-        <br/>
+        <p><strong>Low {feature} threshold:</strong> {data.low_threshold.toFixed(3)}</p>
+        <p><strong>High {feature} threshold:</strong> {data.high_threshold.toFixed(3)}</p>
+
+        <br />
+
+        <p><strong>Low Group Mean:</strong> {data.group_low_mean.toFixed(3)}</p>
+        <p><strong>High Group Mean:</strong> {data.group_high_mean.toFixed(3)}</p>
+
+        <br />
+
         <p><strong>T-statistic:</strong> {data.t_statistic.toFixed(4)}</p>
         <p><strong>P-value:</strong> {data.p_value.toFixed(6)}</p>
       </div>
-        <br/>
 
-      <div
-        className={`hypothesis-decision ${
-          data.decision === "Reject H0" ? "reject" : "accept"
-        }`}
-      >
+      <br />
+
+      <div className={`hypothesis-decision ${data.decision === "Reject H0" ? "reject" : "accept"}`}>
         <h3>Decision: {data.decision}</h3>
         <p>
           {data.decision === "Reject H0"
-            ? "Cloud cover significantly affects temperature."
-            : "No significant evidence that cloud cover affects temperature."}
+            ? `${feature} significantly affects ${target}`
+            : `No significant effect of ${feature} on ${target}`}
         </p>
       </div>
+
     </div>
   );
 }

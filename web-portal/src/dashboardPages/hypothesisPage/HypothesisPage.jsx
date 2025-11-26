@@ -1,9 +1,13 @@
 import { useState } from "react";
 import HypothesisPanel from "./components/HypothesisPanel";
 import "./components/hypothesis.css";
+
 function HypothesisPage() {
   const [year, setYear] = useState(2024);
   const [month, setMonth] = useState(null);
+
+  const [target, setTarget] = useState("t2m_c");   // Temperature by default
+  const [feature, setFeature] = useState("tcc");   // Cloud cover by default
 
   return (
     <div className="hypothesis-page">
@@ -11,6 +15,8 @@ function HypothesisPage() {
 
       {/* CONTROL BAR */}
       <div className="controls-bar">
+
+        {/* YEAR */}
         <div>
           <label>Year:</label>
           <select onChange={e => setYear(Number(e.target.value))} value={year}>
@@ -23,12 +29,13 @@ function HypothesisPage() {
           </select>
         </div>
 
+        {/* MONTH */}
         <div>
           <label>Month:</label>
           <select
             onChange={e => {
-              const value = e.target.value;
-              setMonth(value === "all" ? null : Number(value));
+              const val = e.target.value;
+              setMonth(val === "all" ? null : Number(val));
             }}
           >
             <option value="all">All Months</option>
@@ -46,26 +53,56 @@ function HypothesisPage() {
             <option value="12">December</option>
           </select>
         </div>
+
+        {/* TARGET VARIABLE */}
+        <div>
+          <label>Target Variable:</label>
+          <select value={target} onChange={e => setTarget(e.target.value)}>
+            <option value="t2m_c">Temperature (°C)</option>
+            <option value="tp_mm">Precipitation (mm)</option>
+          </select>
+        </div>
+
+        {/* FEATURE VARIABLE */}
+        <div>
+          <label>Compare Against:</label>
+          <select value={feature} onChange={e => setFeature(e.target.value)}>
+            <option value="tcc">Cloud Cover</option>
+            <option value="u10">Wind U Component</option>
+            <option value="v10">Wind V Component</option>
+            <option value="wind_speed">Wind Speed</option>
+            <option value="d2m_c">Dew Point</option>
+            <option value="sp_hpa">Surface Pressure</option>
+            <option value="slt">Soil Type</option>
+          </select>
+        </div>
       </div>
 
       {/* MAIN LAYOUT */}
       <div className="hypothesis-layout">
 
-        {/* LEFT: RESULTS */}
+        {/* LEFT PANEL */}
         <div className="left-panel">
-          <HypothesisPanel year={year} month={month} />
+          <HypothesisPanel
+            year={year}
+            month={month}
+            target={target}
+            feature={feature}
+          />
         </div>
 
-        {/* RIGHT: THEORY / EXPLANATION */}
+        {/* RIGHT PANEL */}
         <div className="right-panel">
-          <h2>Understanding the T-Test</h2>
+          <h2>Understanding the Hypothesis Test</h2>
 
           <p>
-            The t-statistic measures how different two group means are,
-            compared to how much the data varies.
+            This test splits the <b>{feature}</b> variable into low and high groups
+            using its 30th and 70th percentiles.
           </p>
 
-          <h3>Formula:</h3>
+          <p>
+            Then we compare the mean <b>{target}</b> values using a T-Test.
+          </p>
 
           <div className="formula-box">
             <code>
@@ -73,31 +110,16 @@ function HypothesisPage() {
             </code>
           </div>
 
-          <h3>What each term means in your dashboard:</h3>
-
           <ul>
-            <li><b>x̄₁</b> → Mean temperature for <b>low cloud cover</b> days</li>
-            <li><b>x̄₂</b> → Mean temperature for <b>high cloud cover</b> days</li>
-            <li><b>s₁²</b> → Variance of temperature in low cloud group</li>
-            <li><b>s₂²</b> → Variance of temperature in high cloud group</li>
-            <li><b>n₁</b> → Number of low cloud samples</li>
-            <li><b>n₂</b> → Number of high cloud samples</li>
+            <li><b>x̄₁</b>: Mean {target} for low {feature}</li>
+            <li><b>x̄₂</b>: Mean {target} for high {feature}</li>
+            <li><b>s₁²</b>: Variance in low group</li>
+            <li><b>s₂²</b>: Variance in high group</li>
+            <li><b>n₁, n₂</b>: Sample sizes</li>
           </ul>
 
-          <h3>Interpretation</h3>
           <p>
-            The numerator (<b>x̄₁ − x̄₂</b>) tells us how far apart the two averages are.
-          </p>
-
-          <p>
-            The denominator shows how much random variation exists in the data.
-            If the difference between means is large compared to the noise,
-            then the t-statistic becomes large in magnitude.
-          </p>
-
-          <p>
-            A large |t| leads to a small p-value — meaning the difference 
-            is unlikely to be caused by random chance.
+            A smaller P-value means stronger evidence that {feature} affects {target}.
           </p>
         </div>
 
